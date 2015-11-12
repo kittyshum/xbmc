@@ -211,7 +211,8 @@ def HOME():
         addDir('Search Dramas',strdomain,10,'')
         addDir('Search Movies',strdomain,9,'')
         addDir('Your Favorites',strdomain,24,'')
-        addDir('Movies','http://movies.hkdrama4u.com/',19,'')
+        addDir('Most Recent', 'http://hkdrama24h.se/',34,'')  ## added an additional directory item for most recent
+        addDir('Movies','http://movies.hkdrama24h.se/',19,'')
         GetMenu()
 		
 
@@ -223,15 +224,15 @@ def GetMenu():
         except: pass
         newlink = ''.join(link.splitlines()).replace('\t','')
         soup  = BeautifulSoup(newlink)
-        vidcontent=soup.findAll('ul', {"id" : "menu-top"})
+        vidcontent=soup.findAll('ul', {"id" : "nav"})
         for item in vidcontent[0].findAll('li'):
 			link = item.a['href'].encode('utf-8', 'ignore')
 			vname=str(item.a.contents[0]).strip()
-			if(vname.strip() != "HOME" and vname.strip() != "GAME" and vname.strip() != "Movies"):
+			if(vname.strip()!="HOME" and vname.strip() != "GAME" and vname.strip() != "Movies"): 
 				addDir(vname,link,18,"")
 				
 def GetMovieMenu():
-        link = GetContent("http://movies.hkdrama4u.com/")
+        link = GetContent("http://movies.hkdrama24h.se/")
         try:
             link =link.encode("UTF-8")
         except: pass
@@ -247,6 +248,7 @@ def GetMovieMenu():
 				addDir(vname,link,30,"")
 		
 def MovieIndex(url):
+
         link = GetContent(url)
         try:
             link =link.encode("UTF-8")
@@ -257,16 +259,16 @@ def MovieIndex(url):
         for item in vidcontent[0].findAll('li'):
 			maindiv=item.findAll('div',{"class":"cover"})
 			if(len(maindiv)>0):
-				vlink=maindiv[0].a["href"].encode('utf-8', 'ignore')
+				vlink=maindiv[0].a["href"].encode('utf-8', 'ignore') 
 				vname=maindiv[0].a["title"].encode('utf-8', 'ignore')
 				vimg=maindiv[0].a.img["src"]
 				plotdiv=item.findAll('p',{'class': None})
 				vplot=""
 				if(len(plotdiv)>0):
 					vplot=plotdiv[0].contents[0]
-			#if(len(item.p.contents)>0):
-			#	vplot=item.p.contents[0].encode('utf-8', 'ignore')
 				addDirContext(vname,vlink,31,vimg,vplot,"movie")
+
+
         navcontent=soup.findAll('div', {"class" : "navigation"})
         if(len(navcontent)>0):
 			for item in navcontent[0].findAll('a'):
@@ -277,6 +279,44 @@ def MovieIndex(url):
 					vname=item.contents[1].encode('utf-8', 'ignore')
 					
 				addDir("Page " +vname,vlink,30,"")
+
+
+##  method to parse out the HOME page
+def MostRecentIndex(url):
+
+        link = GetContent(url)
+        try:
+            link =link.encode("UTF-8")
+        except: pass
+        newlink = ''.join(link.splitlines()).replace('\t','')
+        soup = BeautifulSoup(newlink)
+        vidcontent=soup.findAll('ul', {"id" : "loop"})
+        for item in vidcontent[0].findAll('li'):
+			maindiv=item.findAll('div',{"class":"cover"})
+			if(len(maindiv)>0):
+				vlink=maindiv[0].a["href"].encode('utf-8', 'ignore') 
+				vname=maindiv[0].a["title"].encode('utf-8', 'ignore')
+				vimg=maindiv[0].a.img["src"]
+				plotdiv=item.findAll('p',{'class': None})
+				vplot=""
+				if(len(plotdiv)>0):
+					vplot=plotdiv[0].contents[0]
+				#addDirContext(vname,vlink,31,vimg,vplot,"movie")
+				addDir(vname,vlink,32,"")
+				
+
+
+        navcontent=soup.findAll('div', {"class" : "navigation"})
+        if(len(navcontent)>0):
+			for item in navcontent[0].findAll('a'):
+				vlink=item["href"]
+				try:
+					vname=item.contents[0].encode('utf-8', 'ignore')
+				except:
+					vname=item.contents[1].encode('utf-8', 'ignore')
+					
+				addDir("Page " +vname,vlink,34,"")
+
 			
 def SensenLatestIndex(url):
         link = GetContent(url)
@@ -351,7 +391,7 @@ def SensenGetVideo(url):
         except: pass
         newlink = ''.join(link.splitlines()).replace('\t','')
         soup = BeautifulSoup(newlink)
-        vidcontent=soup.findAll('div', {"class" : "post-entry"})
+        vidcontent=soup.findAll('div', {"id" :re.compile("post-*")})
         for item in vidcontent[0].findAll('source'):
 			vname=item["data-res"]
 			vlink=item["src"]
@@ -378,6 +418,15 @@ def SensenGetVideo(url):
 			vidlist = re.compile('proxy.link=(.+?)&').findall(item)
 			vname=vidlist[0].split("/")[2] 
 			addLink(vname,vidlist[0],3,"")
+        vidlist1 = re.compile('sources:\s*\[(.+?)\]').findall(link)
+        if(len(vidlist1)>0):
+			vidlist1="["+vidlist1[0]+"]"
+			vidlist1=vidlist1.replace('file:','"file":').replace('type:','"type":').replace('label:','"label":')
+			viddatalist=json.loads(vidlist1)
+			for item in viddatalist:
+				vidlink = item["file"]
+				vname=item["label"]
+				addLink(vname,vidlink,3,"","direct")
 
 def GetJSON(url,data,referr):
     #opener = urllib2.build_opener()
@@ -1210,21 +1259,28 @@ def ParseVideoLink(url,name,movieinfo):
 
 def ListShows(url):
         link = GetContent(url)
+        
         try:
             link =link.encode("UTF-8")
         except: pass
         newlink = ''.join(link.splitlines()).replace('\t','')
+        
+
         soup = BeautifulSoup(newlink)
         vidcontent=soup.findAll('div', {"id" : "main"})
-        for item in vidcontent[0].findAll('div', {"class" :re.compile('post-*')}):
-			vlink = item.div.a['href'].encode('utf-8', 'ignore')
-			vname=item.div.a["title"].encode('utf-8', 'ignore')
-			vimg=item.div.a.img["src"]
-			vplot=""
-			if(len(item.p.contents)>0):
-				vplot=item.p.contents[0].encode('utf-8', 'ignore')
-			addDirContext(vname,vlink,8,vimg,vplot,"tvshow")
-        navcontent=soup.findAll('div', {"class" : "pagination"})
+        for item in vidcontent[0].findAll('li'):
+
+			if(item.has_key("class")==False or item["class"]!="cleaner"):
+				if(item.div.a!=None):
+					vlink = item.div.a['href'].encode('utf-8', 'ignore')
+					vname=item.div.a["title"].encode('utf-8', 'ignore')
+					vimg=item.div.a.img["src"]
+					vplot=""
+					if(len(item.p.contents)>0):
+						vplot=item.contents[0].encode('utf-8', 'ignore')
+					addDirContext(vname,vlink,8,vimg,vplot,"tvshow")
+
+        navcontent=soup.findAll('div', {"class" : "navigation"})
         if(len(navcontent)>0):
 			for item in navcontent[0].findAll('a'):
 				vlink=item["href"]
@@ -1232,7 +1288,7 @@ def ListShows(url):
 					vname=item.contents[0].encode('utf-8', 'ignore')
 				except:
 					vname=item.contents[1].encode('utf-8', 'ignore')
-					
+				
 				addDir("Page " +vname,vlink,18,"")
 			
 			
@@ -1283,7 +1339,7 @@ def Episodes(url):
         except: pass
         newlink = ''.join(link.splitlines()).replace('\t','')
         soup = BeautifulSoup(newlink)
-        vidcontent=soup.findAll('div', {"class" :"post-entry"})
+        vidcontent=soup.findAll('div', {"id" :re.compile('post-*')})
         for item in vidcontent[0].findAll('h5'):
 			if(item.span==None):
 				currentitem=item.a
@@ -1294,7 +1350,7 @@ def Episodes(url):
 				vname=currentitem.contents[0].encode('utf-8', 'ignore')
 			else:
 				vname=currentitem.span.contents[0].encode('utf-8', 'ignore')
-			
+
 			addDir(vname,vlink,32,"")
 
 
@@ -2167,13 +2223,14 @@ def addNext(formvar,url,mode,iconimage):
 		
 def addDir(name,url,mode,iconimage,plot=""):
         u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)
+
         ok=True
         liz=xbmcgui.ListItem(name, iconImage="DefaultVideo.png", thumbnailImage=iconimage)
         liz.setInfo( type="Video", infoLabels={ "Title": name,"Plot": plot} )
         ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
         return ok
 
-def get_params():
+def get_params(): 
         param=[]
         paramstring=sys.argv[2]
         if len(paramstring)>=2:
@@ -2281,4 +2338,6 @@ elif mode==32:
 		SensenGetVideo(url)
 elif mode==33:
 		SensenLatestIndex(url)
+elif mode==34:
+		MostRecentIndex(url)
 xbmcplugin.endOfDirectory(int(sysarg))
